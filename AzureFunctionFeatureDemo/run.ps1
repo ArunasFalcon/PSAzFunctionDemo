@@ -4,28 +4,39 @@ param($Request, $TriggerMetadata)
 
 $count = $Request.Query.count
 $par = $Request.Query.par
+$code = $Request.Query.code
 Write-Host "Count: $count"
 Write-Host "Par: $par"
 
-if ($par -eq 0)
+if ($par -lt 1)
 {
     $par = 1
 }
 
+$url = $Request.Url
+$calluri = New-Object -TypeName System.Uri -ArgumentList $url
+$scheme = $calluri.Scheme
+$hname = $calluri.Host
+$path = $calluri.AbsolutePath
+$fulluri = "${scheme}://$hname$path"
+$reqmethod = $Request.Method
+
 $guids = [System.Collections.Concurrent.ConcurrentBag[string]]::new()
 
 $count = $Request.Query.count -1
-$uri = "https://demoasiofhwisouefgh.azurewebsites.net/api/guidtest?par=$par&count=$count&code=x1zmx5ObnrW8mgcqg4psJDXSGCduGMdh7IcWQHrhw73MzdYgBUBi9A=="
+$uri = "${fulluri}?par=$par&count=$count&code=$code"
 
 $guid = [guid]::NewGuid()
-$guid = "$guid`n"
+$localip = $env:WEBSITE_INFRASTRUCTURE_IP
+$guid = "${localip}: $guid`n"
 
 if ($count -gt 0)
 {
     1..$par | ForEach-Object -Parallel {
         $lGuids = $using:guids
         $lUri = $using:uri
-        $response = Invoke-RestMethod -Method Get -Uri $lUri
+        $lMethod = $using:reqmethod
+        $response = Invoke-RestMethod -Method $lMethod -Uri $lUri
         $lGuids.Add($response)
     }
 }
